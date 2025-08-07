@@ -1,0 +1,28 @@
+{
+  "name": "fakespotter-ai",
+  "version": "1.0.0",
+  "description": "A fine-tuned large language model trained to detect fake news by analyzing headlines and article content.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd backend && node server.js",
+    "frontend": "cd client && npm run dev",
+    "install-all": "npm install && cd client && npm install && cd ../backend && npm install",
+    "build": "cd client && npm run build",
+    "start": "cd backend && npm start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kalviumcommunity/S85_Fake_News_Detection.git"
+  },
+  "keywords": ["fake-news", "detection", "groq", "ai", "react", "express"],
+  "author": "Your Name",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kalviumcommunity/S85_Fake_News_Detection/issues"
+  },
+  "homepage": "https://github.com/kalviumcommunity/S85_Fake_News_Detection#readme",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
