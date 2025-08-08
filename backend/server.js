@@ -22,29 +22,58 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'Backend is running!' });
 });
 
-// Fake news detection endpoint
+// Fake news detection endpoint with multishot prompting
 app.post('/api/detect-fake-news', async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, examples = [] } = req.body;
 
     if (!text) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    const prompt = `You are an expert fake news detector. Analyze the following news text and determine if it's REAL or FAKE news.
+    // Multishot prompt with examples
+    let prompt = `You are an expert fake news detector. I'll provide you with examples of how to analyze news, then you'll analyze a new piece.
 
-Please provide:
-1. Your verdict: "REAL" or "FAKE"
-2. Confidence score (0-100%)
-3. Brief explanation of your reasoning
+EXAMPLE 1:
+News: "Scientists discover that eating chocolate daily makes you live 200 years longer"
+Analysis:
+- Verdict: FAKE
+- Confidence: 95%
+- Reasoning: Extraordinary longevity claims without peer review, no credible sources cited, contradicts established medical knowledge
 
-News text to analyze:
+EXAMPLE 2:
+News: "Local mayor announces new infrastructure budget approved by city council"
+Analysis:
+- Verdict: REAL
+- Confidence: 85%
+- Reasoning: Factual government announcement, specific details, verifiable through official channels
+
+EXAMPLE 3:
+News: "Tech company reports quarterly earnings beat analyst expectations"
+Analysis:
+- Verdict: REAL
+- Confidence: 90%
+- Reasoning: Standard business news, specific financial data, verifiable through SEC filings`;
+
+    // Add user-provided examples if any
+    if (examples.length > 0) {
+      examples.forEach((example, index) => {
+        prompt += `\n\nEXAMPLE ${4 + index}:
+News: "${example.text}"
+Analysis:
+- Verdict: ${example.verdict}
+- Confidence: ${example.confidence}%
+- Reasoning: ${example.reasoning}`;
+      });
+    }
+
+    prompt += `\n\nNow analyze this news:
 "${text}"
 
-Response format:
-Verdict: [REAL/FAKE]
-Confidence: [0-100]%
-Explanation: [Your reasoning]`;
+Provide your analysis in the same format:
+- Verdict: [REAL/FAKE]
+- Confidence: [0-100]%
+- Reasoning: [Your detailed analysis]`;
 
     const completion = await groq.chat.completions.create({
       messages: [
@@ -54,8 +83,8 @@ Explanation: [Your reasoning]`;
         },
       ],
       model: "llama3-8b-8192",
-      temperature: 0.3,
-      max_tokens: 500,
+      temperature: 0.2,
+      max_tokens: 800,
     });
 
     const response = completion.choices[0]?.message?.content || '';
@@ -63,13 +92,14 @@ Explanation: [Your reasoning]`;
     // Parse the response
     const verdictMatch = response.match(/Verdict:\s*(REAL|FAKE)/i);
     const confidenceMatch = response.match(/Confidence:\s*(\d+)%/);
-    const explanationMatch = response.match(/Explanation:\s*(.*)/s);
+    const reasoningMatch = response.match(/Reasoning:\s*(.*)/s);
 
     const result = {
       verdict: verdictMatch ? verdictMatch[1].toUpperCase() : 'UNKNOWN',
       confidence: confidenceMatch ? parseInt(confidenceMatch[1]) : 0,
-      explanation: explanationMatch ? explanationMatch[1].trim() : response,
-      rawResponse: response
+      reasoning: reasoningMatch ? reasoningMatch[1].trim() : response,
+      rawResponse: response,
+      multishotUsed: examples.length > 0
     };
 
     res.json(result);
